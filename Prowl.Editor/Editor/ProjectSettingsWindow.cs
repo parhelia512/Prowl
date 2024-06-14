@@ -1,18 +1,19 @@
-using Prowl.Editor.Preferences;
-using Prowl.Editor.ProjectSettings;
-using Prowl.Icons;
 using Prowl.Runtime;
-using Prowl.Runtime.GUI;
+using Prowl.Editor.PropertyDrawers;
+using Hexa.NET.ImGui;
+using System.Numerics;
 using System.Reflection;
-using static Prowl.Editor.EditorGUI;
+using Prowl.Icons;
+using Prowl.Editor.Editor.Preferences;
+using Prowl.Editor.Editor.ProjectSettings;
 
-namespace Prowl.Editor;
+namespace Prowl.Editor.EditorWindows;
 
 public class ProjectSettingsWindow : SingletonEditorWindow
 {
     public ProjectSettingsWindow() : base("Project Settings") { }
 
-    public ProjectSettingsWindow(Type settingToOpen) : base(settingToOpen, "Project Settings") { }
+    public ProjectSettingsWindow(Type settingToOpen) : base(settingToOpen) { }
 
     public override void RenderSideView()
     {
@@ -25,8 +26,8 @@ public class PreferencesWindow : SingletonEditorWindow
 {
     public PreferencesWindow() : base("Preferences") { }
 
-    public PreferencesWindow(Type settingToOpen) : base(settingToOpen, "Editor Preferences") { }
-
+    public PreferencesWindow(Type settingToOpen) : base(settingToOpen) { }
+    
     public override void RenderSideView()
     {
         RenderSideViewElement(GeneralPreferences.Instance);
@@ -37,60 +38,52 @@ public class PreferencesWindow : SingletonEditorWindow
 
 public abstract class SingletonEditorWindow : EditorWindow
 {
-    protected override double Width { get; } = 512;
-    protected override double Height { get; } = 512;
+
+    protected override ImGuiWindowFlags Flags => ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse;
+
+    protected override int Width { get; } = 512;
+    protected override int Height { get; } = 512;
 
     private Type? currentType;
     private object? currentSingleton;
 
-    public SingletonEditorWindow(string windowTitle) : base() { Title = FontAwesome6.Gear + " " + windowTitle; }
+    public SingletonEditorWindow(string title) : base() { Title = FontAwesome6.Gear + " " + title; }
 
-    public SingletonEditorWindow(Type settingToOpen, string windowTitle) : base() { currentType = settingToOpen; Title = FontAwesome6.Gear + " " + windowTitle; }
+    public SingletonEditorWindow(Type settingToOpen) : base() { currentType = settingToOpen; }
 
     protected override void Draw()
     {
-        if (!Project.HasProject) return;
-
-        gui.CurrentNode.Layout(LayoutType.Row);
-
-        elementCounter = 0;
-
-        using (gui.Node("SidePanel").Padding(5, 10, 10, 10).Width(150).ExpandHeight().Layout(LayoutType.Column).Spacing(5).Clip().Enter())
+        const ImGuiTableFlags tableFlags = ImGuiTableFlags.Resizable | ImGuiTableFlags.ContextMenuInBody | ImGuiTableFlags.Resizable;
+        System.Numerics.Vector2 availableRegion = ImGui.GetContentRegionAvail();
+        if (ImGui.BeginTable("MainViewTable", 2, tableFlags, availableRegion))
         {
-            gui.Draw2D.DrawRectFilled(gui.CurrentNode.LayoutData.Rect, GuiStyle.WindowBackground * 0.8f, 10);
-            RenderSideView();
-        }
+            ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, 200);
+            ImGui.TableSetupColumn("", ImGuiTableColumnFlags.None);
 
-        using (gui.Node("ContentPanel").PaddingRight(28).Left(150).Width(Size.Percentage(0.8f)).ExpandHeight().Enter())
-        {
-            RenderBody();
+            ImGui.TableNextRow();
+            ImGui.TableSetColumnIndex(0);
+
+            ImGui.BeginChild("SettingTypes");
+            if (Project.HasProject) RenderSideView();
+            ImGui.EndChild();
+            ImGui.TableSetColumnIndex(1);
+            ImGui.BeginChild("Settings");
+            if (Project.HasProject) RenderBody();
+            ImGui.EndChild();
+
+            ImGui.EndTable();
         }
     }
 
     public abstract void RenderSideView();
 
-    private int elementCounter = 0;
     protected void RenderSideViewElement<T>(T elementInstance)
     {
         Type settingType = elementInstance.GetType();
-        using (gui.Node("Element" + elementCounter++).ExpandWidth().Height(GuiStyle.ItemHeight).Enter())
+        if (ImGui.Selectable(settingType.Name, currentType == settingType))
         {
-
-            if (currentType == settingType)
-                gui.Draw2D.DrawRectFilled(gui.CurrentNode.LayoutData.Rect, GuiStyle.Indigo, 10);
-            else if (gui.IsNodeHovered())
-                gui.Draw2D.DrawRectFilled(gui.CurrentNode.LayoutData.Rect, GuiStyle.Base5, 10);
-
-            // remove 'Preferences'
-            string name = settingType.Name.Replace("Preferences", "");
-            gui.Draw2D.DrawText(name, gui.CurrentNode.LayoutData.Rect, false);
-
-            if (gui.IsNodePressed() || currentType == settingType)
-            {
-                currentType = settingType;
-                currentSingleton = elementInstance;
-            }
-
+            currentType = settingType;
+            currentSingleton = elementInstance;
         }
     }
 
@@ -99,19 +92,23 @@ public abstract class SingletonEditorWindow : EditorWindow
         if (currentType == null) return;
 
         // Draw Settings
-        object setting = currentSingleton;
+        var setting = currentSingleton;
 
-        string name = currentType.Name.Replace("Preferences", "");
-        if (PropertyGrid(name, ref setting, TargetFields.Serializable, PropertyGridConfig.NoBorder | PropertyGridConfig.NoBackground))
+        foreach (var field in RuntimeUtils.GetSerializableFields(setting))
         {
-            // Use reflection to find a method "protected void Save()" and Validate
-            MethodInfo? validateMethod = setting.GetType().GetMethod("Validate", BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
-            validateMethod?.Invoke(setting, null);
-            MethodInfo? saveMethod = setting.GetType().GetMethod("Save", BindingFlags.Instance | BindingFlags.Public);
-            saveMethod?.Invoke(setting, null);
+            // Draw the field using PropertyDrawer.Draw
+            if (PropertyDrawer.Draw(setting, field))
+            {
+                // Use reflection to find a method "protected void Save()" and Validate
+                MethodInfo? validateMethod = setting.GetType().GetMethod("Validate", BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+                validateMethod?.Invoke(setting, null);
+                MethodInfo? saveMethod = setting.GetType().GetMethod("Save", BindingFlags.Instance | BindingFlags.Public);
+                saveMethod?.Invoke(setting, null);
+            }
+
         }
 
         // Draw any Buttons
-        //EditorGui.HandleAttributeButtons(setting);
+        EditorGui.HandleAttributeButtons(setting);
     }
 }

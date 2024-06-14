@@ -5,6 +5,11 @@ using static Prowl.Runtime.MonoBehaviour;
 
 namespace Prowl.Runtime.Resources.RenderPipeline
 {
+
+    // 1. Use a Wrapper around RenderTexture with a Read & Write Dual Buffer method
+    // 2. Simplify RenderPassNode and reduce the amount of RenderTextures used
+    // 3. Way to debug view any RenderPassNode and their render textures
+
     public abstract class RenderPassNode : Node
     {
         public abstract override string Title { get; }
@@ -387,8 +392,6 @@ namespace Prowl.Runtime.Resources.RenderPipeline
     {
         public override string Title => "Output";
         public override float Width => 125;
-
-        public string Pipeline = "Deferred";
 
         [Input(ShowBackingValue.Never), SerializeIgnore] public RenderTexture RenderTexture;
 

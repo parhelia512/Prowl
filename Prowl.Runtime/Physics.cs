@@ -14,6 +14,7 @@ using Prowl.Runtime.Controller;
 
 namespace Prowl.Runtime
 {
+
     struct NarrowPhaseCallbacks : INarrowPhaseCallbacks
     {
         /// <summary>
@@ -261,6 +262,7 @@ namespace Prowl.Runtime
         {
             if (!isInitialized)
                 return;
+
 
             Characters.Dispose();
             Characters = null;

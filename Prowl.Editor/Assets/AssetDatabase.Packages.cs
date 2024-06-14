@@ -89,14 +89,14 @@ namespace Prowl.Editor.Assets
         /// <param name="includeDependencies">Whether to include dependencies in the package.</param>
         public static void ExportPackage(DirectoryInfo directory, bool includeDependencies = false)
         {
-#warning TODO: Handle Dependencies, We do track them now, just need to support that here
+#warning TODO: Handle Dependencies
             if (includeDependencies) throw new NotImplementedException("Dependency tracking is not implemented yet.");
 
-            FileDialogContext imFileDialogInfo = new() {
+            ImFileDialogInfo imFileDialogInfo = new() {
                 title = "Export Package",
                 directoryPath = new DirectoryInfo(Project.ProjectDirectory),
                 fileName = "New Package.prowlpackage",
-                type = FileDialogType.SaveFile,
+                type = ImGuiFileDialogType.SaveFile,
                 OnComplete = (path) => {
                     var file = new FileInfo(path);
                     if (File.Exists(file.FullName))

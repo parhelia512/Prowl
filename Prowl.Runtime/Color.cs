@@ -90,8 +90,6 @@ namespace Prowl.Runtime
             this.a = 1f;
         }
 
-        public uint GetUInt() => ((Color32)this).GetUInt();
-
         public static Color Lerp(Color a, Color b, float t)
         {
             t = MathF.Min(MathF.Max(t, 0f), 1f);

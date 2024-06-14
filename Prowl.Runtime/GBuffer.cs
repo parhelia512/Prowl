@@ -27,7 +27,7 @@ public class GBuffer
             TextureImageFormat.Short4, // Position & Roughness
             TextureImageFormat.Short3, // Emission
             TextureImageFormat.Short2, // Velocity
-            TextureImageFormat.Float, // ObjectIDs
+            TextureImageFormat.Short, // ObjectIDs
         ];
         buffer = new RenderTexture(width, height, 6, true, formats);
     }
@@ -53,7 +53,7 @@ public class GBuffer
         int x = (int)(uv.x * Width);
         int y = (int)(uv.y * Height);
         Graphics.Device.BindFramebuffer(frameBuffer);
-        float result = Graphics.Device.ReadPixel<float>(5, x, y, TextureImageFormat.Float);
+        float result = Graphics.Device.ReadPixel<float>(5, x, y, TextureImageFormat.Short);
         return (int)result;
     }
 
@@ -62,7 +62,7 @@ public class GBuffer
         int x = (int)(uv.x * Width);
         int y = (int)(uv.y * Height);
         Graphics.Device.BindFramebuffer(frameBuffer);
-        Vector3 result = Graphics.Device.ReadPixel<System.Numerics.Vector3>(2, x, y, TextureImageFormat.Float3);
+        Vector3 result = Graphics.Device.ReadPixel<System.Numerics.Vector3>(2, x, y, TextureImageFormat.Short3);
         return result;
     }
 
